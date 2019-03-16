@@ -174,6 +174,11 @@ export class Props {
   public onSwipeDown?: () => void = () => {
     //
   };
+
+  /**
+   * Called on single touch move. Invoked only panToMove is not set.
+   */
+  public onTouchMove?: (x: number, y:number) => void = () => {}
 }
 
 export class State {

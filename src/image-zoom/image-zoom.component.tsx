@@ -74,6 +74,8 @@ export default class ImageViewer extends React.Component<Props, State> {
   // 是否在左右滑
   private isHorizontalWrap = false;
 
+  private moveOffset = { x: 0, y: 0 };
+
   public componentWillMount() {
     this.imagePanResponder = PanResponder.create({
       // 要求成为响应者：
@@ -91,6 +93,10 @@ export default class ImageViewer extends React.Component<Props, State> {
         this.isDoubleClick = false;
         this.isLongPress = false;
         this.isHorizontalWrap = false;
+        this.moveOffset = {
+          x: evt.nativeEvent.pageX - evt.nativeEvent.locationX,
+          y: evt.nativeEvent.pageY - evt.nativeEvent.locationY
+        };
 
         // 任何手势开始，都清空单击计时器
         if (this.singleClickTimeout) {
@@ -211,6 +217,9 @@ export default class ImageViewer extends React.Component<Props, State> {
             // 如果位移超出手指范围，取消长按监听
             clearTimeout(this.longPressTimeout);
           }
+
+          let moveX = gestureState.moveX;
+          let moveY = gestureState.moveY;
 
           if (this.props.panToMove) {
             // 处理左右滑，如果正在 swipeDown，左右滑失效
@@ -349,6 +358,10 @@ export default class ImageViewer extends React.Component<Props, State> {
                 }
               }
             }
+          } else {
+            if (this.props.onTouchMove && gestureState.numberActiveTouches == 1) {
+              this.props.onTouchMove(moveX - this.moveOffset.x, moveY - this.moveOffset.y);
+            }
           }
         } else {
           // 多个手指的情况
@@ -430,7 +443,7 @@ export default class ImageViewer extends React.Component<Props, State> {
         }
 
         // 长按结束，结束尾判断
-        if (this.isLongPress) {
+        if (this.isLongPress && this.props.panToMove) {
           return;
         }
 
@@ -438,13 +451,17 @@ export default class ImageViewer extends React.Component<Props, State> {
         // const stayTime = new Date().getTime() - this.lastTouchStartTime!
         const moveDistance = Math.sqrt(gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy);
         const { locationX, locationY, pageX, pageY } = evt.nativeEvent;
-
-        if (evt.nativeEvent.changedTouches.length === 1 && moveDistance < (this.props.clickDistance || 0)) {
-          this.singleClickTimeout = setTimeout(() => {
-            if (this.props.onClick) {
-              this.props.onClick({ locationX, locationY, pageX, pageY });
-            }
-          }, this.props.doubleClickInterval);
+        if (evt.nativeEvent.changedTouches.length === 1 && !this.props.panToMove) {
+          if (moveDistance < (this.props.clickDistance || 0)) {
+            this.singleClickTimeout = setTimeout(() => {
+              if (this.props.onClick) {
+                this.props.onClick({ locationX, locationY, pageX, pageY });
+              }
+            }, this.props.doubleClickInterval);
+          } else {
+            // @ts-ignore - Cannot invoke an object which is possibly 'undefined'
+            this.props.onTouchMove(-1, -1);
+          }
         } else {
           // 多手势结束，或者滑动结束
           if (this.props.responderRelease) {
